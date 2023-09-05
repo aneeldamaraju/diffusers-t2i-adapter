@@ -19,9 +19,8 @@ import numpy as np
 import PIL
 import torch
 from transformers import CLIPFeatureExtractor, CLIPTextModel, CLIPTokenizer
-
-from ...loaders import TextualInversionLoaderMixin
 from ...models import AutoencoderKL, MultiAdapter, T2IAdapter, UNet2DConditionModel
+from ...loaders import TextualInversionLoaderMixin
 from ...schedulers import KarrasDiffusionSchedulers
 from ...utils import (
     PIL_INTERPOLATION,
@@ -140,15 +139,16 @@ class StableDiffusionAdapterPipeline(DiffusionPipeline):
         text_encoder: CLIPTextModel,
         tokenizer: CLIPTokenizer,
         unet: UNet2DConditionModel,
-        adapter: Union[T2IAdapter, MultiAdapter, List[T2IAdapter]],
+        # adapter: Union[T2IAdapter, MultiAdapter, List[T2IAdapter]],
         scheduler: KarrasDiffusionSchedulers,
         safety_checker: StableDiffusionSafetyChecker,
         feature_extractor: CLIPFeatureExtractor,
         adapter_weights: Optional[List[float]] = None,
-        requires_safety_checker: bool = True,
+        requires_safety_checker: bool = False,
     ):
         super().__init__()
-
+        # safety_checker = None
+        # feature_extractor=None
         if safety_checker is None and requires_safety_checker:
             logger.warning(
                 f"You have disabled the safety checker for {self.__class__} by passing `safety_checker=None`. Ensure"
@@ -165,15 +165,15 @@ class StableDiffusionAdapterPipeline(DiffusionPipeline):
                 " checker. If you do not want to use the safety checker, you can pass `'safety_checker=None'` instead."
             )
 
-        if isinstance(adapter, (list, tuple)):
-            adapter = MultiAdapter(adapter, adapter_weights=adapter_weights)
+        # if isinstance(adapter, (list, tuple)):
+        #     adapter = MultiAdapter(adapter, adapter_weights=adapter_weights)
 
         self.register_modules(
             vae=vae,
             text_encoder=text_encoder,
             tokenizer=tokenizer,
             unet=unet,
-            adapter=adapter,
+            # adapter=adapter,
             scheduler=scheduler,
             safety_checker=safety_checker,
             feature_extractor=feature_extractor,
@@ -512,7 +512,6 @@ class StableDiffusionAdapterPipeline(DiffusionPipeline):
                 f"You have passed a list of generators of length {len(generator)}, but requested an effective batch"
                 f" size of {batch_size}. Make sure the batch size matches the length of the generators."
             )
-
         if latents is None:
             latents = randn_tensor(shape, generator=generator, device=device, dtype=dtype)
         else:
@@ -570,6 +569,7 @@ class StableDiffusionAdapterPipeline(DiffusionPipeline):
         callback_steps: int = 1,
         cross_attention_kwargs: Optional[Dict[str, Any]] = None,
         adapter_conditioning_scale: Union[float, List[float]] = 1.0,
+        adapter_weighting: Optional[List[float]] = None
     ):
         r"""
         Function invoked when calling the pipeline for generation.
@@ -711,7 +711,10 @@ class StableDiffusionAdapterPipeline(DiffusionPipeline):
         extra_step_kwargs = self.prepare_extra_step_kwargs(generator, eta)
 
         # 7. Denoising loop
-        adapter_state = self.adapter(adapter_input)
+        if adapter_weighting is not None and is_multi_adapter:
+            adapter_state = self.adapter(adapter_input,adapter_weighting)# Here I want to add a bit that is the adapter weights
+        else:
+            adapter_state = self.adapter(adapter_input)
         for k, v in enumerate(adapter_state):
             adapter_state[k] = v * adapter_conditioning_scale
         if num_images_per_prompt > 1:

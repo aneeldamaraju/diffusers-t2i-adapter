@@ -1,0 +1,14 @@
+#!/bin/bash
+#NAME = "Increase_mask_ratio"
+#SBATCH --job-name=mask_ratio_test
+#SBATCH -p seas_gpu
+#SBATCH --output=logs/mainOut%j_%x.out
+#SBATCH --error=logs/mainErr%j_%x.err
+#SBATCH --time=48:00:00
+#SBATCH --mem=16G
+#SBATCH --gres=gpu:1
+#SBATCH --constraint=a100
+#SBATCH --qos=normal
+#SBATCH --mail-type=ALL
+#SBATCH --mail-user=aneeldamaraju@g.harvard.edu
+python3 ./run_adapter.py

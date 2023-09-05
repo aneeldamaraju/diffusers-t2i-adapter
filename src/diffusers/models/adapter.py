@@ -15,9 +15,9 @@ class BottleneckResnetBlock(nn.Module):
         proj_pad = proj_ksize // 2
 
         if in_c != mid_c or sk is False:
-            self.conv1 = nn.Conv2d(in_c, mid_c, proj_ksize, 1, proj_pad)
+            self.in_conv = nn.Conv2d(in_c, mid_c, proj_ksize, 1, proj_pad)
         else:
-            self.conv1 = None
+            self.in_conv = None
 
         if out_c != mid_c:
             self.conv2 = nn.Conv2d(mid_c, out_c, proj_ksize, 1, proj_pad)
@@ -40,8 +40,8 @@ class BottleneckResnetBlock(nn.Module):
     def forward(self, x):
         if self.down is True:
             x = self.downsample(x)
-        if self.conv1 is not None:  # edit
-            x = self.conv1(x)
+        if self.in_conv is not None:  # edit
+            x = self.in_conv(x)
 
         h = self.block1(x)
         h = self.act(h)
@@ -240,5 +240,5 @@ class MultiAdapter(ModelMixin):
                 accume_state = features
             else:
                 for i in range(len(features)):
-                    accume_state[i] += w * features[i]
+                    accume_state[i] = accume_state[i] + w * features[i]
         return accume_state
